@@ -1,0 +1,46 @@
+package com.example.thumb.sys.vo;
+
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableId;
+import lombok.Data;
+
+
+@Data
+public class BlogVo {
+    /**
+     *
+     */
+    @TableId(type = IdType.AUTO)
+    private Long id;
+
+    /**
+     *
+     */
+    private Long userid;
+
+    /**
+     * 标题
+     */
+    private String title;
+
+    /**
+     * 封面
+     */
+    private String coverimg;
+
+    /**
+     * 内容
+     */
+    private String content;
+
+    /**
+     * 点赞数
+     */
+    private Integer thumbcount;
+
+
+    /**
+     * 是否点赞
+     */
+    private boolean hasThumb;
+}
