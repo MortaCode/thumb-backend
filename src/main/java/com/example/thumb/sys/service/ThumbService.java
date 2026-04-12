@@ -2,6 +2,7 @@ package com.example.thumb.sys.service;
 
 import cn.hutool.core.util.IdUtil;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.example.thumb.common.constants.Constants;
 import com.example.thumb.sys.entity.Blog;
 import com.example.thumb.sys.entity.Thumb;
 import com.example.thumb.sys.entity.User;
@@ -10,8 +11,10 @@ import com.example.thumb.sys.vo.MsgVo;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 
 /**
@@ -24,6 +27,7 @@ import org.springframework.util.StringUtils;
 @AllArgsConstructor
 public class ThumbService extends ServiceImpl<ThumbMapper, Thumb> {
 
+    private final RedisTemplate<String, Object> redisTemplate;
     private final UserService userService;
     private final BlogService blogService;
 
@@ -36,6 +40,7 @@ public class ThumbService extends ServiceImpl<ThumbMapper, Thumb> {
             throw new RuntimeException("参数有误");
         }
         User user = userService.getLoginUser(request);
+        Assert.notNull(user, "请登录");
         synchronized (user.getId().toString().intern()){
             Thumb thumb = this.lambdaQuery()
                     .eq(Thumb::getBlogid, blogId)
@@ -56,6 +61,9 @@ public class ThumbService extends ServiceImpl<ThumbMapper, Thumb> {
                     log.error("点赞失败，用户{}博客{}",user.getId(), blogId);
                     throw new RuntimeException("点赞失败");
                 }
+                //插入缓存
+                redisTemplate.opsForHash()
+                        .put(Constants.USER_THUMB_PREFIX + user.getId(), blogId, blogId);
             } else {
                 boolean thumbFlag = this.removeById(thumb.getId());
                 boolean blogFlag = blogService.lambdaUpdate()
@@ -66,8 +74,16 @@ public class ThumbService extends ServiceImpl<ThumbMapper, Thumb> {
                     log.error("取消点赞失败，用户{}--博客{}",user.getId(), blogId);
                     throw new RuntimeException("取消点赞失败");
                 }
+                //删除缓存
+                Boolean flag = redisTemplate.opsForHash()
+                        .hasKey(Constants.USER_THUMB_PREFIX + user.getId(), blogId);
+                if (flag){
+                    redisTemplate.opsForHash()
+                            .delete(Constants.USER_THUMB_PREFIX + user.getId(), blogId);
+                }
             }
             return MsgVo.of(!isUpdate ? "点赞成功" : "取消点赞", thumb.getId());
         }
     }
+
 }

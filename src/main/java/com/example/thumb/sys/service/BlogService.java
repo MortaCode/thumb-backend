@@ -1,24 +1,21 @@
 package com.example.thumb.sys.service;
 
 import cn.hutool.core.bean.BeanUtil;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.example.thumb.common.constants.Constants;
 import com.example.thumb.sys.entity.Blog;
-import com.example.thumb.sys.entity.Thumb;
 import com.example.thumb.sys.entity.User;
 import com.example.thumb.sys.mapper.BlogMapper;
 import com.example.thumb.sys.mapper.ThumbMapper;
 import com.example.thumb.sys.vo.BlogVo;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.AllArgsConstructor;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -30,8 +27,8 @@ import java.util.stream.Collectors;
 @AllArgsConstructor
 public class BlogService extends ServiceImpl<BlogMapper, Blog> {
 
+    private final RedisTemplate<String, Object> redisTemplate;
     private final UserService userService;
-    private final ThumbMapper thumbMapper;
 
     /**
      * 获取博客列表
@@ -45,12 +42,21 @@ public class BlogService extends ServiceImpl<BlogMapper, Blog> {
         User user = userService.getLoginUser(request);
         List<BlogVo> blogList = BeanUtil.copyToList(this.lambdaQuery().in(Blog::getId, ids).list(), BlogVo.class);
         if (user == null || CollectionUtils.isEmpty(blogList)){return blogList;}
-        Set<String> thumbSet = thumbMapper.selectList(
-                new LambdaQueryWrapper<>(Thumb.class)
-                .in(Thumb::getBlogid, ids)
-                .eq(Thumb::getUserid, user.getId())
-        ).stream().map(Thumb::getBlogid).collect(Collectors.toSet());
-                //.collect(Collectors.toMap(Thumb::getBlogid, e->Boolean.TRUE));
+        //数据库版本
+//        Set<String> thumbSet = thumbMapper.selectList(
+//                new LambdaQueryWrapper<>(Thumb.class)
+//                .in(Thumb::getBlogid, ids)
+//                .eq(Thumb::getUserid, user.getId())
+//                ).stream().map(Thumb::getBlogid).collect(Collectors.toSet());
+//                //.collect(Collectors.toMap(Thumb::getBlogid, e->Boolean.TRUE));
+        //缓存版本
+        List<Object> list = Optional.ofNullable(blogIds).stream().map(e->(Object)e).collect(Collectors.toList());
+        Set<String> thumbSet = Optional.ofNullable(
+                redisTemplate.opsForHash()
+                        .multiGet(Constants.USER_THUMB_PREFIX + user.getId(), list)
+                ).orElse(new ArrayList<>()).stream()
+                .filter(Objects::nonNull)
+                .map(Objects::toString).collect(Collectors.toSet());
         return blogList.stream().map(e -> {
             e.setHasThumb(thumbSet.contains(e.getId()));
             return e;
@@ -81,12 +87,16 @@ public class BlogService extends ServiceImpl<BlogMapper, Blog> {
         if (user == null){
             return blogVo;
         }
-        Thumb thumb = thumbMapper.selectOne(
-                new LambdaQueryWrapper<>(Thumb.class)
-                .eq(Thumb::getUserid, user.getId())
-                .eq(Thumb::getBlogid, blog.getId())
-        );
-        blogVo.setHasThumb(thumb != null);
+        //数据库版本
+//        Thumb thumb = thumbMapper.selectOne(
+//                new LambdaQueryWrapper<>(Thumb.class)
+//                .eq(Thumb::getUserid, user.getId())
+//                .eq(Thumb::getBlogid, blog.getId())
+//        );
+        //缓存版本
+        Boolean hasThumb = redisTemplate.opsForHash()
+                .hasKey(Constants.USER_THUMB_PREFIX + user.getId(), blog.getId());
+        blogVo.setHasThumb(hasThumb);
         return blogVo;
     }
 

@@ -1,7 +1,7 @@
 package com.example.thumb.sys.service;
 
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.example.thumb.common.Constants;
+import com.example.thumb.common.constants.Constants;
 import com.example.thumb.sys.entity.User;
 import com.example.thumb.sys.mapper.UserMapper;
 import jakarta.servlet.http.HttpServletRequest;
