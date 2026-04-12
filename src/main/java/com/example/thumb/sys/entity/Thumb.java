@@ -15,20 +15,20 @@ import lombok.Data;
 @Data
 public class Thumb {
     /**
-     * 
+     *
      */
     @TableId(type = IdType.AUTO)
-    private Long id;
+    private String id;
 
     /**
-     * 
+     *
      */
-    private Long userid;
+    private String userid;
 
     /**
-     * 
+     *
      */
-    private Long blogid;
+    private String blogid;
 
     /**
      * 创建时间

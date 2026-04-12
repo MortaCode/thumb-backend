@@ -1,11 +1,13 @@
 package com.example.thumb.sys.service;
 
 import cn.hutool.core.bean.BeanUtil;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.thumb.sys.entity.Blog;
 import com.example.thumb.sys.entity.Thumb;
 import com.example.thumb.sys.entity.User;
 import com.example.thumb.sys.mapper.BlogMapper;
+import com.example.thumb.sys.mapper.ThumbMapper;
 import com.example.thumb.sys.vo.BlogVo;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.AllArgsConstructor;
@@ -29,7 +31,7 @@ import java.util.stream.Collectors;
 public class BlogService extends ServiceImpl<BlogMapper, Blog> {
 
     private final UserService userService;
-    private final ThumbService thumbService;
+    private final ThumbMapper thumbMapper;
 
     /**
      * 获取博客列表
@@ -43,11 +45,11 @@ public class BlogService extends ServiceImpl<BlogMapper, Blog> {
         User user = userService.getLoginUser(request);
         List<BlogVo> blogList = BeanUtil.copyToList(this.lambdaQuery().in(Blog::getId, ids).list(), BlogVo.class);
         if (user == null || CollectionUtils.isEmpty(blogList)){return blogList;}
-        Set<Long> thumbSet = thumbService.lambdaQuery()
+        Set<String> thumbSet = thumbMapper.selectList(
+                new LambdaQueryWrapper<>(Thumb.class)
                 .in(Thumb::getBlogid, ids)
                 .eq(Thumb::getUserid, user.getId())
-                .list().stream()
-                .map(Thumb::getBlogid).collect(Collectors.toSet());
+        ).stream().map(Thumb::getBlogid).collect(Collectors.toSet());
                 //.collect(Collectors.toMap(Thumb::getBlogid, e->Boolean.TRUE));
         return blogList.stream().map(e -> {
             e.setHasThumb(thumbSet.contains(e.getId()));
@@ -79,10 +81,11 @@ public class BlogService extends ServiceImpl<BlogMapper, Blog> {
         if (user == null){
             return blogVo;
         }
-        Thumb thumb = thumbService.lambdaQuery()
+        Thumb thumb = thumbMapper.selectOne(
+                new LambdaQueryWrapper<>(Thumb.class)
                 .eq(Thumb::getUserid, user.getId())
                 .eq(Thumb::getBlogid, blog.getId())
-                .one();
+        );
         blogVo.setHasThumb(thumb != null);
         return blogVo;
     }

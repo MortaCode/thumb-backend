@@ -17,12 +17,12 @@ public class Blog {
      * 
      */
     @TableId(type = IdType.AUTO)
-    private Long id;
+    private String id;
 
     /**
      * 
      */
-    private Long userid;
+    private String userid;
 
     /**
      * 标题

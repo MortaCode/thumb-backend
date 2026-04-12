@@ -7,7 +7,7 @@ use thumb_db;
 -- 用户表
 create table if not exists user
 (
-    id       bigint auto_increment
+    id       varchar(32)
     primary key,
     username varchar(128) not null
     );
@@ -15,9 +15,9 @@ create table if not exists user
 -- 内容表
 create table if not exists blog
 (
-    id         bigint auto_increment
+    id         varchar(32)
     primary key,
-    userId     bigint                             not null,
+    userId     varchar(32)                             not null,
     title      varchar(512)                       null comment '标题',
     coverImg   varchar(1024)                      null comment '封面',
     content    text                               not null comment '内容',
@@ -31,10 +31,10 @@ create index idx_userId
 -- 点赞记录表
 create table if not exists thumb
 (
-    id         bigint auto_increment
+    id         varchar(32)
     primary key,
-    userId     bigint                             not null,
-    blogId     bigint                             not null,
+    userId     varchar(32)                            not null,
+    blogId     varchar(32)                             not null,
     createTime datetime default CURRENT_TIMESTAMP not null comment '创建时间'
 );
 create unique index idx_userId_blogId

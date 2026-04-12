@@ -1,7 +1,9 @@
 package com.example.thumb.sys.controller;
 
 import com.example.thumb.sys.service.BlogService;
+import com.example.thumb.sys.service.ThumbService;
 import com.example.thumb.sys.vo.BlogVo;
+import com.example.thumb.sys.vo.MsgVo;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,6 +23,7 @@ import java.util.List;
 public class BlogController {
 
     private final BlogService blogService;
+    private final ThumbService thumbService;
 
     /**
      * 获取博客
@@ -42,6 +45,14 @@ public class BlogController {
     @GetMapping("searchByIds")
     public ResponseEntity<List<BlogVo>> searchByIds(HttpServletRequest request, String blogIds){
         return ResponseEntity.ok(blogService.searchByIds(request, blogIds));
+    }
+
+    /**
+     * 点赞和取消点赞
+     */
+    @GetMapping("thumb")
+    public ResponseEntity<MsgVo> thumb(HttpServletRequest request, String blogId){
+        return ResponseEntity.ok(thumbService.thumb(request, blogId));
     }
 
 
