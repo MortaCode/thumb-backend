@@ -36,7 +36,7 @@ public class BlogVo {
     /**
      * 点赞数
      */
-    private Integer thumbcount;
+    private Long thumbcount;
 
 
     /**

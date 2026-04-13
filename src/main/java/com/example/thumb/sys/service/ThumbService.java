@@ -63,7 +63,7 @@ public class ThumbService extends ServiceImpl<ThumbMapper, Thumb> {
                 }
                 //插入缓存
                 redisTemplate.opsForHash()
-                        .put(Constants.USER_THUMB_PREFIX + user.getId(), blogId, blogId);
+                        .put(Constants.THUMB_KEY_PREFIX + user.getId(), blogId, blogId);
             } else {
                 boolean thumbFlag = this.removeById(thumb.getId());
                 boolean blogFlag = blogService.lambdaUpdate()
@@ -76,10 +76,10 @@ public class ThumbService extends ServiceImpl<ThumbMapper, Thumb> {
                 }
                 //删除缓存
                 Boolean flag = redisTemplate.opsForHash()
-                        .hasKey(Constants.USER_THUMB_PREFIX + user.getId(), blogId);
+                        .hasKey(Constants.THUMB_KEY_PREFIX + user.getId(), blogId);
                 if (flag){
                     redisTemplate.opsForHash()
-                            .delete(Constants.USER_THUMB_PREFIX + user.getId(), blogId);
+                            .delete(Constants.THUMB_KEY_PREFIX + user.getId(), blogId);
                 }
             }
             return MsgVo.of(!isUpdate ? "点赞成功" : "取消点赞", thumb.getId());

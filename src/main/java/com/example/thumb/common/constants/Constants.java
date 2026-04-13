@@ -4,5 +4,8 @@ public interface Constants {
 
     String USER_LOGIN = "user_login";
 
-    String USER_THUMB_PREFIX = "thumb";
+    String THUMB_KEY_PREFIX = "thumb:";
+
+    String TEMP_THUMB_KEY_PREFIX = "thumb:temp:%s";
+
 }
