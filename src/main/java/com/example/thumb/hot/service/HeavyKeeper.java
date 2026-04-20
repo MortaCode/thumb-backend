@@ -11,7 +11,8 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
 public class HeavyKeeper implements TopK {
-    private static final int LOOKUP_TABLE_SIZE = 256;
+    private static final int DECAY_TABLE_SIZE = 256;
+
     private final int k;
     private final int depth;
     private final int width;
@@ -26,11 +27,11 @@ public class HeavyKeeper implements TopK {
     private final BlockingQueue<Item> expelledQueue;
 
     //指数衰减table
-    private final double[] lookupTable;
+    private final double[] decayTable;
     private final Random random;
     private long total;
 
-    //TopK、宽度、深度、衰减因子、最小热度阈值
+    //TopK、宽度、深度、衰减因子/decay  dɪˈkeɪ/、最小热度阈值
     public HeavyKeeper(int k, int width, int depth, double decay, int minCount) {
         this.k = k;
         this.width = width;
@@ -46,17 +47,17 @@ public class HeavyKeeper implements TopK {
         this.minHeap = new PriorityQueue<>(Comparator.comparingInt(n -> n.getCount()));
         this.expelledQueue = new LinkedBlockingQueue<>();
 
-        this.lookupTable = new double[LOOKUP_TABLE_SIZE];
-        for (int i = 0; i < LOOKUP_TABLE_SIZE; i++) {
-            lookupTable[i] = Math.pow(decay, i);
+        this.decayTable = new double[DECAY_TABLE_SIZE];
+        for (int i = 0; i < DECAY_TABLE_SIZE; i++) {
+            decayTable[i] = Math.pow(decay, i);
         }
         this.random = new Random();
         this.total = 0;
     }
 
     @Override
-    public AddResult add(String key, int increment) {
-        byte[] keyBytes = key.getBytes();
+    public AddResult add(String fieldKey, int increment) {
+        byte[] keyBytes = fieldKey.getBytes();
         long itemFingerprint = hash(keyBytes);
         int maxCount = 0;
 
@@ -74,9 +75,9 @@ public class HeavyKeeper implements TopK {
                     maxCount = Math.max(maxCount, bucket.count);
                 } else {            //哈希冲突  >>  指数衰减竞争
                     for (int j = 0; j < increment; j++) {
-                        double decay = bucket.count < LOOKUP_TABLE_SIZE ?
-                                lookupTable[bucket.getCount()] :
-                                lookupTable[LOOKUP_TABLE_SIZE - 1];
+                        double decay = bucket.count < DECAY_TABLE_SIZE ?
+                                decayTable[bucket.getCount()] :
+                                decayTable[DECAY_TABLE_SIZE - 1];
                         if (random.nextDouble() < decay) {
                             bucket.count--;
                             if (bucket.getCount() == 0) {
@@ -103,26 +104,26 @@ public class HeavyKeeper implements TopK {
             String expelled = null;
 
             Optional<Node> existing = minHeap.stream()
-                    .filter(n -> n.getKey().equals(key))
+                    .filter(n -> n.getKey().equals(fieldKey))
                     .findFirst();
 
             if (existing.isPresent()) {
                 minHeap.remove(existing.get());
-                minHeap.add(new Node(key, maxCount));
+                minHeap.add(new Node(fieldKey, maxCount));
                 isHot = true;
             } else {
                 if (minHeap.size() < k || maxCount >= Objects.requireNonNull(minHeap.peek()).getCount()) {
-                    Node newNode = new Node(key, maxCount);
                     if (minHeap.size() >= k) {
                         expelled = minHeap.poll().getKey();
                         expelledQueue.offer(new Item(expelled, maxCount));
                     }
+                    Node newNode = new Node(fieldKey, maxCount);
                     minHeap.add(newNode);
                     isHot = true;
                 }
             }
 
-            return new AddResult(expelled, isHot, key);
+            return new AddResult(expelled, isHot, fieldKey);
         }
     }
 

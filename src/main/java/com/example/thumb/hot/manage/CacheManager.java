@@ -51,37 +51,33 @@ public class CacheManager {
     }
 
     // 辅助方法：构造复合 key
-    private String buildCacheKey(String hashKey, String key) {
-        return hashKey + ":" + key;
+    private String buildCacheKey(String redisKey, String fieldKey) {
+        return redisKey + ":" + fieldKey;
     }
 
-    public Object get(String hashKey, String key) {
-        // 构造唯一的 composite key
-        String compositeKey = buildCacheKey(hashKey, key);
+    public Object get(String redisKey, String fieldKey) {
+        // 构造唯一的 composite key/ˈkɒmpəzɪt/
+        String compositeKey = buildCacheKey(redisKey, fieldKey);
 
         // 1. 先查本地缓存
         Object value = localCache.getIfPresent(compositeKey);
         if (value != null) {
             log.info("本地缓存获取到数据 {} = {}", compositeKey, value);
-            // 记录访问次数（每次访问计数 +1）
-            hotKeyDetector.add(key, 1);
+            hotKeyDetector.add(fieldKey, 1);
             return value;
         }
 
         // 2. 本地缓存未命中，查询 Redis
-        Object redisValue = redisTemplate.opsForHash().get(hashKey, key);
-        if (redisValue == null) {
-            return null;
+        Object redisValue = redisTemplate.opsForHash().get(redisKey, fieldKey);
+        if (redisValue != null) {
+            log.info("Redis缓存获取到数据 {} = {}", compositeKey, value);
+            AddResult addResult = hotKeyDetector.add(fieldKey, 1);
+            if (addResult.isHotKey()) {
+                localCache.put(compositeKey, redisValue);
+            }
         }
 
-        // 3. 记录访问（计数 +1）
-        AddResult addResult = hotKeyDetector.add(key, 1);
-
-        // 4. 如果是热 Key 且不在本地缓存，则缓存数据
-        if (addResult.isHotKey()) {
-            localCache.put(compositeKey, redisValue);
-        }
-
+        // 3. 数据库查询
         return redisValue;
     }
 
